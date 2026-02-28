@@ -74,6 +74,7 @@ impl TournamentManager {
             })
             .flat_map(|(i, j)| {
                 (0..num_games)
+                    .into_par_iter()
                     .map(|_| {
                         let player1_rounds_record = TournamentManager::play_game(
                             &self.players[i],
