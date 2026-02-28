@@ -90,7 +90,7 @@ impl PlayerData {
             (
                 "Rounds Lost to Nemesis".to_string(),
                 match &self.nemesis {
-                    Some((n, _)) => self.nemeses[n].percent(),
+                    Some((n, _)) => self.nemeses[n].to_string(),
                     None => "N/A".to_string(),
                 },
             ),

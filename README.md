@@ -32,18 +32,18 @@ Tournament Progress: 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
 
 Name                   Games Won         Rounds Won              Nemesis         Rounds Lost to Nemesis
 =======================================================================================================
-MarkovBot              101/130 (77.7%)    75073/130000 (57.7%)   MetaBot         33.9%
-MetaBot                100/130 (76.9%)    79658/130000 (61.3%)   BiasBot         32.7%
-HistoryBot              99/130 (76.2%)    76302/130000 (58.7%)   ReflectiveBot   67.2%
-ReflectiveBot           87/130 (66.9%)    50169/130000 (38.6%)   MetaBot         67.3%
-DeBruijnDummy           83/130 (63.8%)    44718/130000 (34.4%)   FlatBot         32.8%
-BiasBot                 81/130 (62.3%)    72044/130000 (55.4%)   ReflectiveBot   39.6%
-RandomDummy             64/130 (49.2%)    43141/130000 (33.2%)   FlatBot         34.1%
-DecayingFrequencyBot    63/130 (48.5%)    68517/130000 (52.7%)   BiasBot         66.6%
-FrequencyBot            56/130 (43.1%)    60936/130000 (46.9%)   BiasBot         63.9%
-PaperDummy              42/130 (32.3%)    30204/130000 (23.2%)   ScissorsDummy   100.0%
-PatternDummy            39/130 (30.0%)    30100/130000 (23.2%)   HistoryBot      99.3%
-FlatBot                 35/130 (26.9%)    32184/130000 (24.8%)   FrequencyBot    66.5%
-ScissorsDummy           21/130 (16.2%)    26488/130000 (20.4%)   RockDummy       100.0%
-RockDummy               19/130 (14.6%)    22266/130000 (17.1%)   PaperDummy      100.0%
+MetaBot                104/130 (80.0%)    79886/130000 (61.5%)   DeBruijnDummy    3345/10000 (33.5%)
+MarkovBot              104/130 (80.0%)    75186/130000 (57.8%)   ReflectiveBot    3361/10000 (33.6%)
+HistoryBot              92/130 (70.8%)    76264/130000 (58.7%)   ReflectiveBot    6745/10000 (67.5%)
+ReflectiveBot           86/130 (66.2%)    51282/130000 (39.4%)   MetaBot          6709/10000 (67.1%)
+BiasBot                 79/130 (60.8%)    71859/130000 (55.3%)   ReflectiveBot    3926/10000 (39.3%)
+DeBruijnDummy           76/130 (58.5%)    44719/130000 (34.4%)   MarkovBot        3392/10000 (33.9%)
+RandomDummy             62/130 (47.7%)    42949/130000 (33.0%)   FrequencyBot     3428/10000 (34.3%)
+DecayingFrequencyBot    58/130 (44.6%)    67670/130000 (52.1%)   BiasBot          6659/10000 (66.6%)
+FrequencyBot            55/130 (42.3%)    61326/130000 (47.2%)   BiasBot          7186/10000 (71.9%)
+PatternDummy            46/130 (35.4%)    30549/130000 (23.5%)   HistoryBot       9925/10000 (99.2%)
+PaperDummy              44/130 (33.8%)    29814/130000 (22.9%)   ScissorsDummy   10000/10000 (100.0%)
+FlatBot                 39/130 (30.0%)    32210/130000 (24.8%)   PaperDummy       6672/10000 (66.7%)
+ScissorsDummy           24/130 (18.5%)    25885/130000 (19.9%)   RockDummy       10000/10000 (100.0%)
+RockDummy               19/130 (14.6%)    22442/130000 (17.3%)   PaperDummy      10000/10000 (100.0%)
 ```
