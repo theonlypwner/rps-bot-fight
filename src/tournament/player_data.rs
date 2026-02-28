@@ -1,5 +1,9 @@
 use linked_hash_map::LinkedHashMap;
-use std::{collections::HashMap, ops::AddAssign};
+use std::{
+    cmp::Reverse,
+    collections::HashMap,
+    ops::{Add, AddAssign},
+};
 
 use crate::bot::Player;
 
@@ -10,7 +14,7 @@ pub struct PlayerData {
     pub rounds_record: Record,
     pub games_record: Record,
     nemeses: HashMap<String, Record>,
-    nemesis: Option<String>,
+    nemesis: Option<(String, usize)>,
 }
 
 impl PlayerData {
@@ -27,7 +31,13 @@ impl PlayerData {
 
     /// Updates the nemesis tracker of this player. A player's nemesis is the
     /// player who they've lost the most rounds to.
-    pub fn update_nemesis(&mut self, player_name: String, losses: u32, total: u32) {
+    pub fn update_nemesis(
+        &mut self,
+        player_name: String,
+        priority: usize,
+        losses: u32,
+        total: u32,
+    ) {
         // Add wins for the nemesis
         let opponent_wins = {
             let opponent_record = &mut self
@@ -40,13 +50,13 @@ impl PlayerData {
         };
         match &self.nemesis {
             None => {
-                self.nemesis = Some(player_name);
+                self.nemesis = Some((player_name, priority));
             }
-            Some(n) => {
+            Some((n, p)) => {
                 let nemesis_record = &mut self.nemeses.get_mut(n).unwrap();
                 let nemesis_wins = nemesis_record.wins as f64 / nemesis_record.total as f64;
-                if opponent_wins > nemesis_wins {
-                    self.nemesis = Some(player_name);
+                if (opponent_wins, Reverse(priority)) > (nemesis_wins, Reverse(*p)) {
+                    self.nemesis = Some((player_name, priority));
                 }
             }
         }
@@ -56,7 +66,7 @@ impl PlayerData {
     /// they've lost the most rounds to.
     pub fn get_nemesis(&self) -> String {
         match &self.nemesis {
-            Some(n) => n.clone(),
+            Some((n, _)) => n.clone(),
             None => "N/A".to_string(),
         }
     }
@@ -80,7 +90,7 @@ impl PlayerData {
             (
                 "Rounds Lost to Nemesis".to_string(),
                 match &self.nemesis {
-                    Some(n) => self.nemeses[n].percent(),
+                    Some((n, _)) => self.nemeses[n].percent(),
                     None => "N/A".to_string(),
                 },
             ),
@@ -151,6 +161,19 @@ impl Record {
             losses: self.wins,
             draws: self.draws,
             total: self.total,
+        }
+    }
+}
+
+impl Add for Record {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            wins: self.wins + other.wins,
+            losses: self.losses + other.losses,
+            draws: self.draws + other.draws,
+            total: self.total + other.total,
         }
     }
 }

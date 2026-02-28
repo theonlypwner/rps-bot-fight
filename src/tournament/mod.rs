@@ -72,27 +72,40 @@ impl TournamentManager {
                     .into_par_iter()
                     .map(move |j| (i, j))
             })
-            .flat_map(|(i, j)| {
-                (0..num_games)
+            .map(|(i, j)| {
+                let (rounds, games) = (0..num_games)
                     .into_par_iter()
                     .map(|_| {
-                        let player1_rounds_record = TournamentManager::play_game(
+                        let rounds_cur = TournamentManager::play_game(
                             &self.players[i],
                             &self.players[j],
                             num_rounds,
                         );
 
+                        // Update game records based on game results
+                        let mut games_cur = Record::new();
+                        games_cur.add_outcome(match rounds_cur.wins.cmp(&rounds_cur.losses) {
+                            std::cmp::Ordering::Greater => Outcome::Win,
+                            std::cmp::Ordering::Less => Outcome::Loss,
+                            std::cmp::Ordering::Equal => Outcome::Draw,
+                        });
+
                         // Update tournament completion percentage
                         progress.lock().unwrap().finish_game();
 
-                        (i, j, player1_rounds_record)
+                        (rounds_cur, games_cur)
                     })
-                    .collect::<Vec<_>>()
+                    .reduce(
+                        || (Record::new(), Record::new()),
+                        |(a_r, a_g), (b_r, b_g)| (a_r + b_r, a_g + b_g),
+                    );
+
+                (i, j, rounds, games)
             })
             .collect::<Vec<_>>()
             .into_iter()
-            .for_each(|(i, j, player1_rounds_record)| {
-                self.update_player_results(i, j, num_rounds, player1_rounds_record);
+            .for_each(|(i, j, rounds, games)| {
+                self.update_player_results(i, j, rounds, games);
             });
 
         print!("\n\n");
@@ -122,20 +135,7 @@ impl TournamentManager {
             player2_moves.push(player2_move);
 
             let result = player1_move.versus(player2_move);
-            match result {
-                Outcome::Draw => {
-                    // Draw
-                    player1_rounds_record.add_draw();
-                }
-                Outcome::Win => {
-                    // Player 1 wins
-                    player1_rounds_record.add_win();
-                }
-                Outcome::Loss => {
-                    // Player 2 wins
-                    player1_rounds_record.add_loss();
-                }
-            }
+            player1_rounds_record.add_outcome(result);
         }
 
         player1_rounds_record
@@ -145,44 +145,31 @@ impl TournamentManager {
         &mut self,
         i: usize,
         j: usize,
-        num_rounds: u32,
-        player1_rounds_record: Record,
+        player1_rounds: Record,
+        player1_games: Record,
     ) {
         let (part1, part2) = self.players.split_at_mut(j);
 
         let player1_data = &mut part1[i];
         let player2_data = &mut part2[0];
 
-        player1_data.rounds_record += player1_rounds_record.clone();
-        player2_data.rounds_record += player1_rounds_record.opponent();
+        player1_data.rounds_record += player1_rounds.clone();
+        player2_data.rounds_record += player1_rounds.opponent();
 
-        // Update game records based on game results
-        match player1_rounds_record
-            .wins
-            .cmp(&player1_rounds_record.losses)
-        {
-            std::cmp::Ordering::Greater => {
-                player1_data.games_record.add_win();
-                player2_data.games_record.add_loss();
-            }
-            std::cmp::Ordering::Less => {
-                player1_data.games_record.add_loss();
-                player2_data.games_record.add_win();
-            }
-            std::cmp::Ordering::Equal => {
-                player1_data.games_record.add_draw();
-                player2_data.games_record.add_draw();
-            }
-        }
+        player1_data.games_record += player1_games.clone();
+        player2_data.games_record += player1_games.opponent();
+
         player1_data.update_nemesis(
             player2_data.name.clone(),
-            player1_rounds_record.losses,
-            num_rounds,
+            j,
+            player1_rounds.losses,
+            player1_rounds.total,
         );
         player2_data.update_nemesis(
             player1_data.name.clone(),
-            player1_rounds_record.wins,
-            num_rounds,
+            i,
+            player1_rounds.wins,
+            player1_rounds.total,
         );
     }
 
@@ -246,6 +233,16 @@ impl TournamentManager {
     fn reset_player_data(&mut self) {
         for p in &mut self.players {
             p.reset_records()
+        }
+    }
+}
+
+impl Record {
+    pub fn add_outcome(&mut self, outcome: Outcome) {
+        match outcome {
+            Outcome::Draw => self.add_draw(),
+            Outcome::Win => self.add_win(),
+            Outcome::Loss => self.add_loss(),
         }
     }
 }
