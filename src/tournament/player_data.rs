@@ -1,7 +1,6 @@
 use linked_hash_map::LinkedHashMap;
 use std::{
     cmp::Reverse,
-    collections::HashMap,
     ops::{Add, AddAssign},
 };
 
@@ -13,8 +12,13 @@ pub struct PlayerData {
     constructor: fn() -> Box<dyn Player>,
     pub rounds_record: Record,
     pub games_record: Record,
-    nemeses: HashMap<String, Record>,
-    nemesis: Option<(String, usize)>,
+    opponents: Vec<OpponentData>,
+}
+
+struct OpponentData {
+    name: String,
+    priority: usize,
+    rounds_record: Record,
 }
 
 impl PlayerData {
@@ -24,51 +28,24 @@ impl PlayerData {
             constructor,
             rounds_record: Record::new(),
             games_record: Record::new(),
-            nemeses: HashMap::new(),
-            nemesis: None,
+            opponents: Vec::new(),
         }
     }
 
-    /// Updates the nemesis tracker of this player. A player's nemesis is the
-    /// player who they've lost the most rounds to.
-    pub fn update_nemesis(
-        &mut self,
-        player_name: String,
-        priority: usize,
-        losses: u32,
-        total: u32,
-    ) {
-        // Add wins for the nemesis
-        let opponent_wins = {
-            let opponent_record = &mut self
-                .nemeses
-                .entry(player_name.clone())
-                .or_insert(Record::new());
-            opponent_record.wins += losses;
-            opponent_record.total += total;
-            opponent_record.wins as f64 / opponent_record.total as f64
-        };
-        match &self.nemesis {
-            None => {
-                self.nemesis = Some((player_name, priority));
-            }
-            Some((n, p)) => {
-                let nemesis_record = &mut self.nemeses.get_mut(n).unwrap();
-                let nemesis_wins = nemesis_record.wins as f64 / nemesis_record.total as f64;
-                if (opponent_wins, Reverse(priority)) > (nemesis_wins, Reverse(*p)) {
-                    self.nemesis = Some((player_name, priority));
-                }
-            }
-        }
+    pub fn add_opponent(&mut self, player_name: String, priority: usize, rounds_record: Record) {
+        self.opponents.push(OpponentData {
+            name: player_name.clone(),
+            priority,
+            rounds_record,
+        })
     }
 
     /// Returns the nemesis of this player. A player's nemesis is the player who
     /// they've lost the most rounds to.
-    pub fn get_nemesis(&self) -> String {
-        match &self.nemesis {
-            Some((n, _)) => n.clone(),
-            None => "N/A".to_string(),
-        }
+    fn get_nemesis(&self) -> Option<&OpponentData> {
+        self.opponents
+            .iter()
+            .max_by_key(|o| (o.rounds_record.losses, Reverse(o.priority)))
     }
 
     ///  Resets all of this player's win/loss/draw totals for rounds and games, as
@@ -76,24 +53,29 @@ impl PlayerData {
     pub fn reset_records(&mut self) {
         self.rounds_record = Record::new();
         self.games_record = Record::new();
-        self.nemeses = HashMap::new();
-        self.nemesis = None;
+        self.opponents.clear();
     }
 
     /// Returns a collection of stats about this player.
     pub fn get_stats(&self) -> LinkedHashMap<String, String> {
+        let nemesis = self.get_nemesis();
+
+        let nemesis_name = match nemesis {
+            Some(n) => n.name.clone(),
+            None => "N/A".to_string(),
+        };
+
+        let nemesis_losses = match nemesis {
+            Some(n) => n.rounds_record.opponent().to_string(),
+            None => "N/A".to_string(),
+        };
+
         LinkedHashMap::from_iter([
             ("Name".to_string(), self.name.clone()),
             ("Games Won".to_string(), self.games_record.to_string()),
             ("Rounds Won".to_string(), self.rounds_record.to_string()),
-            ("Nemesis".to_string(), self.get_nemesis()),
-            (
-                "Rounds Lost to Nemesis".to_string(),
-                match &self.nemesis {
-                    Some((n, _)) => self.nemeses[n].to_string(),
-                    None => "N/A".to_string(),
-                },
-            ),
+            ("Nemesis".to_string(), nemesis_name),
+            ("Rounds Lost to Nemesis".to_string(), nemesis_losses),
         ])
     }
 

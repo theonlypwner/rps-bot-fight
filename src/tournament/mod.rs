@@ -159,18 +159,8 @@ impl TournamentManager {
         player1_data.games_record += player1_games.clone();
         player2_data.games_record += player1_games.opponent();
 
-        player1_data.update_nemesis(
-            player2_data.name.clone(),
-            j,
-            player1_rounds.losses,
-            player1_rounds.total,
-        );
-        player2_data.update_nemesis(
-            player1_data.name.clone(),
-            i,
-            player1_rounds.wins,
-            player1_rounds.total,
-        );
+        player1_data.add_opponent(player2_data.name.clone(), j, player1_rounds.clone());
+        player2_data.add_opponent(player1_data.name.clone(), i, player1_rounds.opponent());
     }
 
     /// Prints player rankings in column form, displaying the number of games and
