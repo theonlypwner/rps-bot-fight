@@ -1,5 +1,5 @@
 use linked_hash_map::LinkedHashMap;
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::AddAssign};
 
 use crate::bot::Player;
 
@@ -94,7 +94,7 @@ impl PlayerData {
 }
 
 /// Stores totals for win/loss/draw data.
-#[derive(PartialOrd, Eq, PartialEq)]
+#[derive(Clone, PartialOrd, Eq, PartialEq)]
 pub struct Record {
     pub wins: u32,
     pub losses: u32,
@@ -142,5 +142,24 @@ impl Record {
     pub fn percent(&self) -> String {
         let p = 100.0 * self.wins as f64 / self.total as f64;
         format!("{p:.1}%")
+    }
+
+    // Returns the record for the opponent
+    pub fn opponent(&self) -> Self {
+        Self {
+            wins: self.losses,
+            losses: self.wins,
+            draws: self.draws,
+            total: self.total,
+        }
+    }
+}
+
+impl AddAssign for Record {
+    fn add_assign(&mut self, other: Self) {
+        self.wins += other.wins;
+        self.losses += other.losses;
+        self.draws += other.draws;
+        self.total += other.total;
     }
 }

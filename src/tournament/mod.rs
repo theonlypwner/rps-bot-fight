@@ -2,11 +2,14 @@ use std::{
     any::type_name,
     cmp::Reverse,
     io::{self, Write},
+    sync::Mutex,
 };
+
+use rayon::prelude::*;
 
 use crate::{
     bot::{Move, Outcome, Player},
-    tournament::player_data::PlayerData,
+    tournament::player_data::{PlayerData, Record},
 };
 
 mod player_data;
@@ -56,31 +59,41 @@ impl TournamentManager {
         println!("\t{} competitors", self.players.len());
         println!();
 
-        let total_games =
-            (num_games as usize) * (self.players.len() * (self.players.len() - 1) / 2);
+        let pairs = self.players.len() * (self.players.len() - 1) / 2;
+        let total_games = (num_games as usize) * pairs;
 
-        let game_per_percent: f64 = 1.0 / (total_games as f64);
-        let mut percent_done: f64 = 0.0;
-        let mut percent_done_shown: f64 = 0.0;
+        let progress = &Mutex::new(TournamentProgress::new(total_games));
         print!("Tournament Progress: 0%");
 
-        for i in 0..self.players.len() {
-            for j in i + 1..self.players.len() {
-                for _game in 0..num_games {
-                    self.play_game(i, j, num_rounds);
+        (0..self.players.len())
+            .into_par_iter()
+            .flat_map(|i| {
+                (i + 1..self.players.len())
+                    .into_par_iter()
+                    .map(move |j| (i, j))
+            })
+            .flat_map(|(i, j)| {
+                (0..num_games)
+                    .map(|_| {
+                        let player1_rounds_record = TournamentManager::play_game(
+                            &self.players[i],
+                            &self.players[j],
+                            num_rounds,
+                        );
 
-                    // Update tournament completion percentage
-                    percent_done += game_per_percent;
-                    while percent_done_shown < percent_done {
-                        percent_done_shown += COMPLETION_PERCENT_UPDATE;
-                        if percent_done_shown <= 1.0 {
-                            print!(" {:.0}%", percent_done_shown * 100.0);
-                            io::stdout().flush().expect("Unable to flush stdout");
-                        }
-                    }
-                }
-            }
-        }
+                        // Update tournament completion percentage
+                        progress.lock().unwrap().finish_game();
+
+                        (i, j, player1_rounds_record)
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .for_each(|(i, j, player1_rounds_record)| {
+                self.update_player_results(i, j, num_rounds, player1_rounds_record);
+            });
+
         print!("\n\n");
 
         self.print_rankings();
@@ -89,21 +102,17 @@ impl TournamentManager {
     /// Plays a single game consisting of the given number of rounds between the
     /// two given players. Player data for both players is updated depending on
     /// the results of the rounds and the game.
-    fn play_game(&mut self, i: usize, j: usize, num_rounds: u32) {
-        let (part1, part2) = self.players.split_at_mut(j);
-
-        let player1_data = &mut part1[i];
-        let player2_data = &mut part2[0];
-
-        let mut player1 = player1_data.new_instance();
-        let mut player2 = player2_data.new_instance();
+    ///
+    /// Returns the round record for the first player.
+    fn play_game(data1: &PlayerData, data2: &PlayerData, num_rounds: u32) -> Record {
+        let mut player1 = data1.new_instance();
+        let mut player2 = data2.new_instance();
 
         let mut player1_moves: Vec<Move> = vec![];
         let mut player2_moves: Vec<Move> = vec![];
-        let mut player1_round_wins = 0;
-        let mut player2_round_wins = 0;
 
         // Play the given number of rounds
+        let mut player1_rounds_record = Record::new();
         for _round in 0..num_rounds {
             let player1_move = player1.make_move(player2_moves.as_slice());
             let player2_move = player2.make_move(player1_moves.as_slice());
@@ -115,37 +124,65 @@ impl TournamentManager {
             match result {
                 Outcome::Draw => {
                     // Draw
-                    player1_data.rounds_record.add_draw();
-                    player2_data.rounds_record.add_draw();
+                    player1_rounds_record.add_draw();
                 }
                 Outcome::Win => {
                     // Player 1 wins
-                    player1_round_wins += 1;
-                    player1_data.rounds_record.add_win();
-                    player2_data.rounds_record.add_loss();
+                    player1_rounds_record.add_win();
                 }
                 Outcome::Loss => {
                     // Player 2 wins
-                    player2_round_wins += 1;
-                    player1_data.rounds_record.add_loss();
-                    player2_data.rounds_record.add_win();
+                    player1_rounds_record.add_loss();
                 }
             }
         }
 
+        player1_rounds_record
+    }
+
+    fn update_player_results(
+        &mut self,
+        i: usize,
+        j: usize,
+        num_rounds: u32,
+        player1_rounds_record: Record,
+    ) {
+        let (part1, part2) = self.players.split_at_mut(j);
+
+        let player1_data = &mut part1[i];
+        let player2_data = &mut part2[0];
+
+        player1_data.rounds_record += player1_rounds_record.clone();
+        player2_data.rounds_record += player1_rounds_record.opponent();
+
         // Update game records based on game results
-        if player1_round_wins > player2_round_wins {
-            player1_data.games_record.add_win();
-            player2_data.games_record.add_loss();
-        } else if player1_round_wins < player2_round_wins {
-            player1_data.games_record.add_loss();
-            player2_data.games_record.add_win();
-        } else {
-            player1_data.games_record.add_draw();
-            player2_data.games_record.add_draw();
+        match player1_rounds_record
+            .wins
+            .cmp(&player1_rounds_record.losses)
+        {
+            std::cmp::Ordering::Greater => {
+                player1_data.games_record.add_win();
+                player2_data.games_record.add_loss();
+            }
+            std::cmp::Ordering::Less => {
+                player1_data.games_record.add_loss();
+                player2_data.games_record.add_win();
+            }
+            std::cmp::Ordering::Equal => {
+                player1_data.games_record.add_draw();
+                player2_data.games_record.add_draw();
+            }
         }
-        player1_data.update_nemesis(player2_data.name.clone(), player2_round_wins, num_rounds);
-        player2_data.update_nemesis(player1_data.name.clone(), player1_round_wins, num_rounds);
+        player1_data.update_nemesis(
+            player2_data.name.clone(),
+            player1_rounds_record.losses,
+            num_rounds,
+        );
+        player2_data.update_nemesis(
+            player1_data.name.clone(),
+            player1_rounds_record.wins,
+            num_rounds,
+        );
     }
 
     /// Prints player rankings in column form, displaying the number of games and
@@ -208,6 +245,33 @@ impl TournamentManager {
     fn reset_player_data(&mut self) {
         for p in &mut self.players {
             p.reset_records()
+        }
+    }
+}
+
+struct TournamentProgress {
+    game_per_percent: f64,
+    percent_done: f64,
+    percent_done_shown: f64,
+}
+
+impl TournamentProgress {
+    pub fn new(total_games: usize) -> Self {
+        Self {
+            game_per_percent: 1.0 / (total_games as f64),
+            percent_done: 0.0,
+            percent_done_shown: 0.0,
+        }
+    }
+
+    fn finish_game(&mut self) {
+        self.percent_done += self.game_per_percent;
+        while self.percent_done_shown < self.percent_done {
+            self.percent_done_shown += COMPLETION_PERCENT_UPDATE;
+            if self.percent_done_shown <= 1.0 {
+                print!(" {:.0}%", self.percent_done_shown * 100.0);
+                io::stdout().flush().expect("Unable to flush stdout");
+            }
         }
     }
 }

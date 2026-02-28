@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4.5.60", features = ["derive"] }
 linked-hash-map = "0.5.6"
 rand = "0.10.0"
+rayon = "1.11.0"
 strum = "0.28.0"
 strum_macros = "0.28.0"

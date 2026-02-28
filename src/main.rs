@@ -1,12 +1,22 @@
+use clap::Parser;
+
 use crate::{bot::*, tournament::TournamentManager};
 
 mod bot;
 mod tournament;
 
-const NUM_ROUNDS: u32 = 1000;
-const NUM_GAMES: u32 = 10;
+#[derive(Parser)]
+struct Cli {
+    #[arg(value_name = "NUM_ROUNDS", default_value_t = 1000)]
+    rounds: u32,
+
+    #[arg(value_name = "NUM_GAMES", default_value_t = 10)]
+    games: u32,
+}
 
 fn main() {
+    let args = Cli::parse();
+
     let mut manager = TournamentManager::new();
 
     manager.add::<RandomDummy>();
@@ -25,5 +35,5 @@ fn main() {
     manager.add::<BiasBot>();
     manager.add::<FlatBot>();
 
-    manager.run_tournament(NUM_ROUNDS, NUM_GAMES);
+    manager.run_tournament(args.rounds, args.games);
 }
