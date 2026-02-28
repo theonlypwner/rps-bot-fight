@@ -60,10 +60,10 @@ impl TournamentManager {
         println!();
 
         let pairs = self.players.len() * (self.players.len() - 1) / 2;
-        let total_games = (num_games as usize) * pairs;
+        let total_games = num_games as u64 * pairs as u64;
 
         let progress = &Mutex::new(TournamentProgress::new(total_games));
-        print!("Tournament Progress: 0%");
+        print!("Tournament Progress:");
 
         (0..self.players.len())
             .into_par_iter()
@@ -250,28 +250,28 @@ impl TournamentManager {
 }
 
 struct TournamentProgress {
-    game_per_percent: f64,
-    percent_done: f64,
-    percent_done_shown: f64,
+    done: u64,
+    total: u64,
+    percent_next: f64,
 }
 
 impl TournamentProgress {
-    pub fn new(total_games: usize) -> Self {
+    pub fn new(total: u64) -> Self {
         Self {
-            game_per_percent: 1.0 / (total_games as f64),
-            percent_done: 0.0,
-            percent_done_shown: 0.0,
+            done: 0,
+            total,
+            percent_next: 0.0,
         }
     }
 
     fn finish_game(&mut self) {
-        self.percent_done += self.game_per_percent;
-        while self.percent_done_shown < self.percent_done {
-            self.percent_done_shown += COMPLETION_PERCENT_UPDATE;
-            if self.percent_done_shown <= 1.0 {
-                print!(" {:.0}%", self.percent_done_shown * 100.0);
-                io::stdout().flush().expect("Unable to flush stdout");
-            }
+        self.done += 1;
+
+        while self.percent_next <= self.done as f64 / self.total as f64 {
+            print!(" {:.0}%", self.percent_next * 100.0);
+            io::stdout().flush().expect("Unable to flush stdout");
+
+            self.percent_next += COMPLETION_PERCENT_UPDATE;
         }
     }
 }
