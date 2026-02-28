@@ -9,7 +9,7 @@ use rayon::prelude::*;
 
 use crate::{
     bot::{Move, Outcome, Player},
-    tournament::player_data::{PlayerData, Record},
+    tournament::player_data::{PlayerData, PlayerStats, Record},
 };
 
 mod player_data;
@@ -182,18 +182,8 @@ impl TournamentManager {
         let stats = Vec::from_iter(self.players.iter().map(|p| p.get_stats()));
 
         // Get the names of all stats and the width of each stat column
-        let column_names: Vec<String> = Vec::from_iter(stats[0].keys().map(|s| s.clone()));
-        let column_name_length: Vec<usize> =
-            Vec::from_iter(column_names.iter().map(|column_name| {
-                std::cmp::max(
-                    column_name.len(),
-                    stats
-                        .iter()
-                        .map(|player_stats| player_stats[column_name].len())
-                        .max()
-                        .unwrap(),
-                ) + COLUMN_SPACING
-            }));
+        let column_names = PlayerStats::column_names();
+        let column_name_length = PlayerStats::column_name_length(stats.as_slice(), COLUMN_SPACING);
 
         // Get the total width of the stats table
         // Account for fencepost problem by subtracting
@@ -211,9 +201,8 @@ impl TournamentManager {
 
         // Print stats for each player
         for player_stats in stats {
-            for (i, column_name) in column_names.iter().enumerate() {
-                let w = column_name_length[i];
-                print!("{:w$}", player_stats[column_name]);
+            for (i, w) in column_name_length.iter().enumerate() {
+                print!("{:w$}", PlayerStats::get_value(i, &player_stats));
             }
             println!();
         }

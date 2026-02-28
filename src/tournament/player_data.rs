@@ -1,4 +1,3 @@
-use linked_hash_map::LinkedHashMap;
 use std::{
     cmp::Reverse,
     ops::{Add, AddAssign},
@@ -19,6 +18,14 @@ struct OpponentData {
     name: String,
     priority: usize,
     rounds_record: Record,
+}
+
+pub struct PlayerStats {
+    name: String,
+    games_won: String,
+    rounds_won: String,
+    nemesis: String,
+    nemesis_rounds: String,
 }
 
 impl PlayerData {
@@ -57,7 +64,7 @@ impl PlayerData {
     }
 
     /// Returns a collection of stats about this player.
-    pub fn get_stats(&self) -> LinkedHashMap<String, String> {
+    pub fn get_stats(&self) -> PlayerStats {
         let nemesis = self.get_nemesis();
 
         let nemesis_name = match nemesis {
@@ -70,18 +77,45 @@ impl PlayerData {
             None => "N/A".to_string(),
         };
 
-        LinkedHashMap::from_iter([
-            ("Name".to_string(), self.name.clone()),
-            ("Games Won".to_string(), self.games_record.to_string()),
-            ("Rounds Won".to_string(), self.rounds_record.to_string()),
-            ("Nemesis".to_string(), nemesis_name),
-            ("Rounds Lost to Nemesis".to_string(), nemesis_losses),
-        ])
+        PlayerStats {
+            name: self.name.clone(),
+            games_won: self.games_record.to_string(),
+            rounds_won: self.rounds_record.to_string(),
+            nemesis: nemesis_name,
+            nemesis_rounds: nemesis_losses,
+        }
     }
 
     /// Creates a new instance of the player whose data is being stored.
     pub fn new_instance(&self) -> Box<dyn Player> {
         (self.constructor)()
+    }
+}
+
+impl PlayerStats {
+    const COLUMNS: [(&str, fn(&PlayerStats) -> &String); 5] = [
+        ("Name", |p| &p.name),
+        ("Games Won", |p| &p.games_won),
+        ("Rounds Won", |p| &p.rounds_won),
+        ("Nemesis", |p| &p.nemesis),
+        ("Rounds Lost to Nemesis", |p| &p.nemesis_rounds),
+    ];
+
+    pub fn column_names() -> [&'static str; Self::COLUMNS.len()] {
+        Self::COLUMNS.map(|c| c.0)
+    }
+
+    pub fn column_name_length(stats: &[PlayerStats], add: usize) -> [usize; Self::COLUMNS.len()] {
+        Self::COLUMNS.map(|(column_name, getter)| {
+            add + std::iter::once(column_name.len())
+                .chain(stats.iter().map(|player_stats| getter(player_stats).len()))
+                .max()
+                .unwrap()
+        })
+    }
+
+    pub fn get_value(col: usize, player_stats: &PlayerStats) -> &String {
+        return Self::COLUMNS[col].1(&player_stats);
     }
 }
 
