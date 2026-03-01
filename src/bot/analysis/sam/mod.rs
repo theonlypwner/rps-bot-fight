@@ -7,10 +7,10 @@ struct State<T: Copy + Eq + Hash> {
     next: HashMap<T, usize>, // transitions
 
     // Two largest end positions of substrings represented by this state:
-    // best1 = largest end position (may be current)
-    // best2 = second largest end position (always earlier if exists)
-    best1: isize,
-    best2: isize,
+    // best1 = one past largest end position (may be current)
+    // best2 = one past second largest end position (always earlier if exists)
+    best1: usize,
+    best2: usize,
 }
 
 impl<T: Copy + Eq + Hash> State<T> {
@@ -19,8 +19,8 @@ impl<T: Copy + Eq + Hash> State<T> {
             len: 0,
             link: -1,
             next: HashMap::new(),
-            best1: -1,
-            best2: -1,
+            best1: 0,
+            best2: 0,
         }
     }
 }
@@ -45,26 +45,19 @@ impl<T: Copy + Eq + Hash> SuffixAutomaton<T> {
         }
     }
 
-    // Insert a position into (best1, best2)
-    fn insert_pos(best1: &mut isize, best2: &mut isize, pos: isize) {
-        if pos > *best1 {
-            *best2 = *best1;
-            *best1 = pos;
-        } else if pos > *best2 && pos != *best1 {
-            *best2 = pos;
-        }
-    }
-
-    /// Extend SAM with character c at index pos.
+    /// Extend SAM with character c.
     /// Returns (length, after_pos_of_last_earlier_occurrence).
-    fn extend(&mut self, c: T, pos: usize) -> (usize, Option<usize>) {
+    fn extend(&mut self, c: T) -> (usize, Option<usize>) {
+        self.items.push(c);
+        let pos = self.items.len();
+
         let cur = self.st.len();
         self.st.push(State {
             len: self.st[self.last].len + 1,
             link: 0,
             next: HashMap::new(),
-            best1: pos as isize,
-            best2: -1,
+            best1: pos,
+            best2: 0,
         });
 
         let mut p = self.last as isize;
@@ -100,12 +93,14 @@ impl<T: Copy + Eq + Hash> SuffixAutomaton<T> {
         let mut p2 = self.st[cur].link;
         while p2 != -1 {
             let pu = p2 as usize;
-            // Take one mutable reference to the state, then split fields
-            let (b1, b2) = {
-                let st = &mut self.st[pu];
-                (&mut st.best1, &mut st.best2)
-            };
-            Self::insert_pos(b1, b2, pos as isize);
+            let st = &mut self.st[pu];
+            // Insert a position into (best1, best2)
+            if pos > st.best1 {
+                st.best2 = st.best1;
+                st.best1 = pos;
+            } else if pos > st.best2 && pos != st.best1 {
+                st.best2 = pos;
+            }
             p2 = self.st[pu].link;
         }
 
@@ -120,20 +115,18 @@ impl<T: Copy + Eq + Hash> SuffixAutomaton<T> {
         let end1 = self.st[v].best1;
         let end2 = self.st[v].best2;
 
-        let end = if end1 < pos as isize { end1 } else { end2 };
+        let end = if end1 < pos { end1 } else { end2 };
 
-        if end < 0 {
-            return (0, None);
+        if end == 0 {
+            (0, None)
+        } else {
+            // return the position AFTER the earlier occurrence
+            (len, Some(end))
         }
-
-        // return the position AFTER the earlier occurrence
-        let after = end as usize + 1;
-        (len, Some(after))
     }
 
     pub fn push(&mut self, c: T) -> T {
-        let (_, after) = self.extend(c, self.items.len());
-        self.items.push(c);
+        let (_, after) = self.extend(c);
         self.index_of_next = after.unwrap_or(0);
         self.predict()
     }
