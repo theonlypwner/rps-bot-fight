@@ -6,19 +6,19 @@ I don't remember the motivation for doing so.
 
 ## Improvements
 
+### Command Line Options
+
+The number of games and rounds are now specified at runtime, instead of being hardcoded.
+
 ### History Bots Speedup
 
 `HistoryBot`, `MetaBot`, and `ReflectiveBot` are optimized by using a suffix automaton (SAM) instead of a naive search every time a move is made.
 
 This code also fixes a fencepost error in the original code, which ignores the first character when searching for suffixes that appear earlier.
 
-### Parallelism
+### Parallelism Speedup
 
 Using all CPU cores with multithreading speeds up the program.
-
-### Command Line Options
-
-The number of games and rounds are now specified at runtime, instead of being hardcoded.
 
 ## Example Tournament Output
 
