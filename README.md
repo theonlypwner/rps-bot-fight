@@ -10,6 +10,10 @@ I don't remember the motivation for doing so.
 
 The number of games and rounds are now specified at runtime, instead of being hardcoded.
 
+### ReflectiveBot Fix
+
+There seems to be a bug in `ReflectiveBot`, causing the predictor score to be updated incorrectly. `ReflectiveBot2` fixes it.
+
 ### History Bots Speedup
 
 `HistoryBot`, `MetaBot`, and `ReflectiveBot` are optimized by using a suffix automaton (SAM) instead of a naive search every time a move is made.
@@ -26,24 +30,54 @@ Using all CPU cores with multithreading speeds up the program.
 Playing tournament with:
         1000 round long games
         10 game long matches
-        14 competitors
+        15 competitors
 
 Tournament Progress: 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
 
-Name                   Games Won         Rounds Won              Nemesis         Rounds Lost to Nemesis
-=======================================================================================================
-MetaBot                104/130 (80.0%)    79886/130000 (61.5%)   DeBruijnDummy    3345/10000 (33.5%)
-MarkovBot              104/130 (80.0%)    75186/130000 (57.8%)   ReflectiveBot    3361/10000 (33.6%)
-HistoryBot              92/130 (70.8%)    76264/130000 (58.7%)   ReflectiveBot    6745/10000 (67.5%)
-ReflectiveBot           86/130 (66.2%)    51282/130000 (39.4%)   MetaBot          6709/10000 (67.1%)
-BiasBot                 79/130 (60.8%)    71859/130000 (55.3%)   ReflectiveBot    3926/10000 (39.3%)
-DeBruijnDummy           76/130 (58.5%)    44719/130000 (34.4%)   MarkovBot        3392/10000 (33.9%)
-RandomDummy             62/130 (47.7%)    42949/130000 (33.0%)   FrequencyBot     3428/10000 (34.3%)
-DecayingFrequencyBot    58/130 (44.6%)    67670/130000 (52.1%)   BiasBot          6659/10000 (66.6%)
-FrequencyBot            55/130 (42.3%)    61326/130000 (47.2%)   BiasBot          7186/10000 (71.9%)
-PatternDummy            46/130 (35.4%)    30549/130000 (23.5%)   HistoryBot       9925/10000 (99.2%)
-PaperDummy              44/130 (33.8%)    29814/130000 (22.9%)   ScissorsDummy   10000/10000 (100.0%)
-FlatBot                 39/130 (30.0%)    32210/130000 (24.8%)   PaperDummy       6672/10000 (66.7%)
-ScissorsDummy           24/130 (18.5%)    25885/130000 (19.9%)   RockDummy       10000/10000 (100.0%)
-RockDummy               19/130 (14.6%)    22442/130000 (17.3%)   PaperDummy      10000/10000 (100.0%)
+Name                   Games Won         Rounds Won              Nemesis          Rounds Lost to Nemesis
+========================================================================================================
+MetaBot                110/140 (78.6%)    86039/140000 (61.5%)   MarkovBot         3360/10000 (33.6%)
+ReflectiveBot2         103/140 (73.6%)    86965/140000 (62.1%)   MetaBot           6640/10000 (66.4%)
+HistoryBot             100/140 (71.4%)    76354/140000 (54.5%)   ReflectiveBot2    9994/10000 (99.9%)
+MarkovBot               98/140 (70.0%)    78294/140000 (55.9%)   RandomDummy       3423/10000 (34.2%)
+ReflectiveBot           91/140 (65.0%)    50535/140000 (36.1%)   ReflectiveBot2    7994/10000 (79.9%)
+DeBruijnDummy           87/140 (62.1%)    48336/140000 (34.5%)   PatternDummy      3420/10000 (34.2%)
+BiasBot                 84/140 (60.0%)    76878/140000 (54.9%)   ReflectiveBot     3956/10000 (39.6%)
+RandomDummy             72/140 (51.4%)    46945/140000 (33.5%)   ReflectiveBot     3367/10000 (33.7%)
+DecayingFrequencyBot    62/140 (44.3%)    72791/140000 (52.0%)   BiasBot           6656/10000 (66.6%)
+FrequencyBot            52/140 (37.1%)    62075/140000 (44.3%)   BiasBot           7990/10000 (79.9%)
+PaperDummy              44/140 (31.4%)    30275/140000 (21.6%)   ScissorsDummy    10000/10000 (100.0%)
+FlatBot                 42/140 (30.0%)    35217/140000 (25.2%)   FrequencyBot      6710/10000 (67.1%)
+PatternDummy            40/140 (28.6%)    31649/140000 (22.6%)   HistoryBot        9924/10000 (99.2%)
+ScissorsDummy           22/140 (15.7%)    26565/140000 (19.0%)   RockDummy        10000/10000 (100.0%)
+RockDummy               20/140 (14.3%)    23110/140000 (16.5%)   PaperDummy       10000/10000 (100.0%)
+```
+
+With larger sizes, it still runs quite quickly:
+
+```text
+Playing tournament with:
+        2000 round long games
+        1000 game long matches
+        15 competitors
+
+Tournament Progress: 0% 10% 20% 30% 40% 50% 60% 70% 80% 90% 100%
+
+Name                   Games Won             Rounds Won                  Nemesis          Rounds Lost to Nemesis
+==================================================================================================================
+MetaBot                12037/14000 (86.0%)   18028576/28000000 (64.4%)   HistoryBot        685665/2000000 (34.3%)
+ReflectiveBot2         11360/14000 (81.1%)   17832428/28000000 (63.7%)   MetaBot          1322158/2000000 (66.1%)
+MarkovBot              10907/14000 (77.9%)   16571873/28000000 (59.2%)   ReflectiveBot2    668048/2000000 (33.4%)
+HistoryBot             10648/14000 (76.1%)   16051166/28000000 (57.3%)   ReflectiveBot2   1999346/2000000 (100.0%)
+ReflectiveBot           9962/14000 (71.2%)   10011317/28000000 (35.8%)   MetaBot          1359236/2000000 (68.0%)
+BiasBot                 9013/14000 (64.4%)   15204683/28000000 (54.3%)   ReflectiveBot     821832/2000000 (41.1%)
+RandomDummy             6915/14000 (49.4%)    9333274/28000000 (33.3%)   HistoryBot        667489/2000000 (33.4%)
+DecayingFrequencyBot    6220/14000 (44.4%)   14369306/28000000 (51.3%)   BiasBot          1332650/2000000 (66.6%)
+FrequencyBot            5429/14000 (38.8%)   12434766/28000000 (44.4%)   HistoryBot       1440573/2000000 (72.0%)
+DeBruijnDummy           5085/14000 (36.3%)    8244387/28000000 (29.4%)   ReflectiveBot2   1327345/2000000 (66.4%)
+PatternDummy            3966/14000 (28.3%)    6230523/28000000 (22.3%)   HistoryBot       1991299/2000000 (99.6%)
+PaperDummy              3945/14000 (28.2%)    5956705/28000000 (21.3%)   ScissorsDummy    2000000/2000000 (100.0%)
+FlatBot                 3558/14000 (25.4%)    6865264/28000000 (24.5%)   PaperDummy       1335815/2000000 (66.8%)
+RockDummy               1959/14000 (14.0%)    4634808/28000000 (16.6%)   PaperDummy       2000000/2000000 (100.0%)
+ScissorsDummy           1958/14000 (14.0%)    5279945/28000000 (18.9%)   RockDummy        2000000/2000000 (100.0%)
 ```

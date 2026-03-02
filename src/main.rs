@@ -31,6 +31,7 @@ fn main() {
     manager.add::<HistoryBot>();
     manager.add::<MarkovBot>();
     manager.add::<ReflectiveBot>();
+    manager.add::<ReflectiveBot2>();
     manager.add::<MetaBot>();
     manager.add::<BiasBot>();
     manager.add::<FlatBot>();

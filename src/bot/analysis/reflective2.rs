@@ -1,4 +1,7 @@
-use crate::bot::{Move, Player, analysis::sam::SuffixAutomaton};
+use crate::bot::{
+    Move, Player,
+    analysis::{reflective::Predictor, sam::SuffixAutomaton},
+};
 
 /// Analyzes the opponents move history to find the longest move sequence that
 /// matches the most recent move sequence. Then looks at what they played next
@@ -7,17 +10,14 @@ use crate::bot::{Move, Player, analysis::sam::SuffixAutomaton};
 /// Does the same to own history to predict what an opponent would play if they
 /// are doing the same strategy. Keeps track of which version would have
 /// performed against what the opponent chose, and uses the best.
-pub struct ReflectiveBot {
+pub struct ReflectiveBot2 {
     sam_opp: SuffixAutomaton,
     sam_me: SuffixAutomaton,
     predictor_opp: Predictor,
     predictor_me: Predictor,
 }
 
-const DECAY: f64 = 0.9;
-const CHANGE: f64 = 0.1;
-
-impl Player for ReflectiveBot {
+impl Player for ReflectiveBot2 {
     fn new() -> Self {
         Self {
             sam_opp: SuffixAutomaton::new(),
@@ -43,43 +43,17 @@ impl Player for ReflectiveBot {
                 self.predictor_opp.update(opp_last_move);
                 self.predictor_me.update(opp_last_move);
 
-                self.predictor_opp.predicted_move = self.sam_opp.predict();
-                self.predictor_me.predicted_move = self.sam_me.predict();
+                self.predictor_opp.predicted_move = self.sam_opp.predict().get_counter();
+                self.predictor_me.predicted_move = self.sam_me.predict().get_defeated();
 
                 if self.predictor_opp.score > self.predictor_me.score {
-                    self.predictor_opp.predicted_move.get_counter()
+                    self.predictor_opp.predicted_move
                 } else {
-                    self.predictor_me.predicted_move.get_defeated()
+                    self.predictor_me.predicted_move
                 }
             }
         };
         self.sam_me.push(my_move);
         my_move
-    }
-}
-
-pub struct Predictor {
-    pub predicted_move: Move,
-    pub score: f64,
-}
-
-impl Predictor {
-    pub fn new() -> Self {
-        Self {
-            predicted_move: Move::Rock,
-            score: 0.0,
-        }
-    }
-
-    pub fn update(&mut self, last_move: Move) {
-        self.score *= DECAY;
-        if self.predicted_move.beats(last_move) {
-            // Won
-            self.score += CHANGE
-        } else if self.predicted_move != last_move {
-            // Lost
-            // self.score -= CHANGE
-            self.score = 0.0
-        }
     }
 }
