@@ -38,12 +38,13 @@ impl Player for ReflectiveBot {
                 next_move
             }
             Some(&opp_last_move) => {
-                let opp_predict = self.sam_opp.push(opp_last_move as u8);
+                self.sam_opp.push(opp_last_move as u8);
 
                 self.predictor_opp.update(opp_last_move);
                 self.predictor_me.update(opp_last_move);
 
-                self.predictor_opp.predicted_move = Move::from_repr(opp_predict).unwrap();
+                self.predictor_opp.predicted_move =
+                    Move::from_repr(self.sam_opp.predict()).unwrap();
                 self.predictor_me.predicted_move = Move::from_repr(self.sam_me.predict()).unwrap();
 
                 if self.predictor_opp.score > self.predictor_me.score {

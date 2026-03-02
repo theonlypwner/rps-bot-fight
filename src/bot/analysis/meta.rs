@@ -32,9 +32,8 @@ impl Player for MetaBot {
             Some(&opp_last_move) => {
                 update_strategy(self, opp_last_move);
 
-                self.base_move = Move::from_repr(self.sam.push(opp_last_move as u8))
-                    .unwrap()
-                    .get_counter();
+                self.sam.push(opp_last_move as u8);
+                self.base_move = Move::from_repr(self.sam.predict()).unwrap().get_counter();
 
                 self.base_move.shift(
                     self.shifts

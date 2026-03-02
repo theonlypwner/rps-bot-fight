@@ -46,8 +46,7 @@ impl<T: Copy + Eq + Hash> SuffixAutomaton<T> {
     }
 
     /// Extend SAM with character c.
-    /// Returns (length, after_pos_of_last_earlier_occurrence).
-    fn extend(&mut self, c: T) -> (usize, Option<usize>) {
+    pub fn push(&mut self, c: T) {
         self.items.push(c);
         let pos = self.items.len();
 
@@ -104,31 +103,20 @@ impl<T: Copy + Eq + Hash> SuffixAutomaton<T> {
             p2 = self.st[pu].link;
         }
 
-        // Query: longest suffix that occurs earlier
-        let v = self.st[cur].link as usize;
-        let len = self.st[v].len;
+        self.index_of_next = {
+            // Query: longest suffix that occurs earlier
+            let v = self.st[cur].link as usize;
+            let len = self.st[v].len;
 
-        if len == 0 {
-            return (0, None);
-        }
+            if len == 0 {
+                0
+            } else {
+                let end1 = self.st[v].best1;
+                let end2 = self.st[v].best2;
 
-        let end1 = self.st[v].best1;
-        let end2 = self.st[v].best2;
-
-        let end = if end1 < pos { end1 } else { end2 };
-
-        if end == 0 {
-            (0, None)
-        } else {
-            // return the position AFTER the earlier occurrence
-            (len, Some(end))
-        }
-    }
-
-    pub fn push(&mut self, c: T) -> T {
-        let (_, after) = self.extend(c);
-        self.index_of_next = after.unwrap_or(0);
-        self.predict()
+                if end1 < pos { end1 } else { end2 }
+            }
+        };
     }
 
     pub fn predict(&self) -> T {

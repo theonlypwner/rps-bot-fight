@@ -18,9 +18,10 @@ impl Player for HistoryBot {
         match opp_prev_moves.last() {
             None => Move::random(),
             // Some(_) => _move_slow(opp_prev_moves),
-            Some(&opp_last_move) => Move::from_repr(self.sam.push(opp_last_move as u8))
-                .unwrap()
-                .get_counter(),
+            Some(&opp_last_move) => {
+                self.sam.push(opp_last_move as u8);
+                Move::from_repr(self.sam.predict()).unwrap().get_counter()
+            }
         }
     }
 }
