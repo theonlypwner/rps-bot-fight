@@ -89,7 +89,11 @@ impl SuffixAutomaton {
 
         self.last = cur;
 
-        // Propagate the new position upward along suffix links.
+        // Propagate the new position upward along suffix links
+        //
+        // All other parts have O(1) amortized time, but this part takes O(n) time,
+        // making the overall time complexity similar to
+        // building and scanning the LPS or Z array for the reversed string.
         let mut p2 = self.st[cur].link;
         while p2 != -1 {
             let pu = p2 as usize;
@@ -101,7 +105,7 @@ impl SuffixAutomaton {
             } else if pos > st.best2 && pos != st.best1 {
                 st.best2 = pos;
             }
-            p2 = self.st[pu].link;
+            p2 = st.link;
         }
 
         self.index_of_next = {
