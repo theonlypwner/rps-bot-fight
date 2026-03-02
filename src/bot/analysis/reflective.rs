@@ -8,8 +8,8 @@ use crate::bot::{Move, Player, analysis::sam::SuffixAutomaton};
 /// are doing the same strategy. Keeps track of which version would have
 /// performed against what the opponent chose, and uses the best.
 pub struct ReflectiveBot {
-    sam_opp: SuffixAutomaton<u8>,
-    sam_me: SuffixAutomaton<u8>,
+    sam_opp: SuffixAutomaton,
+    sam_me: SuffixAutomaton,
     predictor_opp: Predictor,
     predictor_me: Predictor,
 }
@@ -38,14 +38,13 @@ impl Player for ReflectiveBot {
                 next_move
             }
             Some(&opp_last_move) => {
-                self.sam_opp.push(opp_last_move as u8);
+                self.sam_opp.push(opp_last_move);
 
                 self.predictor_opp.update(opp_last_move);
                 self.predictor_me.update(opp_last_move);
 
-                self.predictor_opp.predicted_move =
-                    Move::from_repr(self.sam_opp.predict()).unwrap();
-                self.predictor_me.predicted_move = Move::from_repr(self.sam_me.predict()).unwrap();
+                self.predictor_opp.predicted_move = self.sam_opp.predict();
+                self.predictor_me.predicted_move = self.sam_me.predict();
 
                 if self.predictor_opp.score > self.predictor_me.score {
                     self.predictor_opp.predicted_move.get_counter()
@@ -54,7 +53,7 @@ impl Player for ReflectiveBot {
                 }
             }
         };
-        self.sam_me.push(my_move as u8);
+        self.sam_me.push(my_move);
         my_move
     }
 }

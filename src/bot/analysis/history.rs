@@ -4,7 +4,7 @@ use crate::bot::{Move, Player, analysis::sam::SuffixAutomaton};
 /// matches the most recent move sequence. Then looks at what they played next
 /// and plays the counter to it.
 pub struct HistoryBot {
-    sam: SuffixAutomaton<u8>,
+    sam: SuffixAutomaton,
 }
 
 impl Player for HistoryBot {
@@ -19,8 +19,8 @@ impl Player for HistoryBot {
             None => Move::random(),
             // Some(_) => _move_slow(opp_prev_moves),
             Some(&opp_last_move) => {
-                self.sam.push(opp_last_move as u8);
-                Move::from_repr(self.sam.predict()).unwrap().get_counter()
+                self.sam.push(opp_last_move);
+                self.sam.predict().get_counter()
             }
         }
     }

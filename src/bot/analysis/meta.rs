@@ -9,7 +9,7 @@ use crate::bot::{Move, Player, analysis::sam::SuffixAutomaton};
 /// Keeps track of how different "shifts" to its chosen move would have performed
 /// against what the opponent chose, and applies the best.
 pub struct MetaBot {
-    sam: SuffixAutomaton<u8>,
+    sam: SuffixAutomaton,
     base_move: Move,
     shifts: [f64; Move::COUNT],
 }
@@ -32,8 +32,8 @@ impl Player for MetaBot {
             Some(&opp_last_move) => {
                 update_strategy(self, opp_last_move);
 
-                self.sam.push(opp_last_move as u8);
-                self.base_move = Move::from_repr(self.sam.predict()).unwrap().get_counter();
+                self.sam.push(opp_last_move);
+                self.base_move = self.sam.predict().get_counter();
 
                 self.base_move.shift(
                     self.shifts

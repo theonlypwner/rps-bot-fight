@@ -1,10 +1,12 @@
-use std::{collections::HashMap, hash::Hash};
+use strum::EnumCount;
+
+use crate::bot::Move;
 
 #[derive(Clone)]
-struct State<T: Copy + Eq + Hash> {
-    len: usize,              // length of longest string in this state
-    link: isize,             // suffix link
-    next: HashMap<T, usize>, // transitions
+struct State {
+    len: usize,                 // length of longest string in this state
+    link: isize,                // suffix link
+    next: [isize; Move::COUNT], // transitions
 
     // Two largest end positions of substrings represented by this state:
     // best1 = one past largest end position (may be current)
@@ -13,27 +15,27 @@ struct State<T: Copy + Eq + Hash> {
     best2: usize,
 }
 
-impl<T: Copy + Eq + Hash> State<T> {
+impl State {
     fn new() -> Self {
         Self {
             len: 0,
             link: -1,
-            next: HashMap::new(),
+            next: [-1; Move::COUNT],
             best1: 0,
             best2: 0,
         }
     }
 }
 
-pub struct SuffixAutomaton<T: Copy + Eq + Hash> {
-    st: Vec<State<T>>,
+pub struct SuffixAutomaton {
+    st: Vec<State>,
     last: usize,
 
-    items: Vec<T>,
+    items: Vec<Move>,
     index_of_next: usize,
 }
 
-impl<T: Copy + Eq + Hash> SuffixAutomaton<T> {
+impl SuffixAutomaton {
     pub fn new() -> Self {
         let mut st = Vec::new();
         st.push(State::new()); // root
@@ -46,42 +48,41 @@ impl<T: Copy + Eq + Hash> SuffixAutomaton<T> {
     }
 
     /// Extend SAM with character c.
-    pub fn push(&mut self, c: T) {
+    pub fn push(&mut self, c: Move) {
         self.items.push(c);
         let pos = self.items.len();
 
         let cur = self.st.len();
-        self.st.push(State {
-            len: self.st[self.last].len + 1,
-            link: 0,
-            next: HashMap::new(),
-            best1: pos,
-            best2: 0,
+        self.st.push({
+            let mut s = State::new();
+            s.len = self.st[self.last].len + 1;
+            s.best1 = pos;
+            s
         });
 
         let mut p = self.last as isize;
-        while p != -1 && !self.st[p as usize].next.contains_key(&c) {
-            self.st[p as usize].next.insert(c, cur);
+        while p != -1 && self.st[p as usize].next[c as usize] == -1 {
+            self.st[p as usize].next[c as usize] = cur as isize;
             p = self.st[p as usize].link;
         }
 
         if p == -1 {
             self.st[cur].link = 0;
         } else {
-            let q = self.st[p as usize].next[&c];
-            if self.st[p as usize].len + 1 == self.st[q].len {
+            let q = self.st[p as usize].next[c as usize];
+            if self.st[p as usize].len + 1 == self.st[q as usize].len {
                 self.st[cur].link = q as isize;
             } else {
                 let clone = self.st.len();
-                self.st.push(self.st[q].clone());
+                self.st.push(self.st[q as usize].clone());
                 self.st[clone].len = self.st[p as usize].len + 1;
 
-                while p != -1 && self.st[p as usize].next.get(&c) == Some(&q) {
-                    self.st[p as usize].next.insert(c, clone);
+                while p != -1 && self.st[p as usize].next[c as usize] == q {
+                    self.st[p as usize].next[c as usize] = clone as isize;
                     p = self.st[p as usize].link;
                 }
 
-                self.st[q].link = clone as isize;
+                self.st[q as usize].link = clone as isize;
                 self.st[cur].link = clone as isize;
             }
         }
@@ -119,7 +120,7 @@ impl<T: Copy + Eq + Hash> SuffixAutomaton<T> {
         };
     }
 
-    pub fn predict(&self) -> T {
+    pub fn predict(&self) -> Move {
         self.items[self.index_of_next]
     }
 }
