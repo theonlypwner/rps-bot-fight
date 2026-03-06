@@ -200,6 +200,8 @@ struct State {
     len: usize,                 // length of longest string in this state
     link: isize,                // suffix link
     next: [isize; Move::COUNT], // transitions
+
+    endp: usize, // one past largest end position
 }
 
 impl State {
@@ -208,6 +210,7 @@ impl State {
             len: 0,
             link: -1,
             next: [-1; Move::COUNT],
+            endp: 0,
         }
     }
 }
@@ -223,15 +226,15 @@ pub struct SuffixAutomaton {
 }
 
 impl SuffixAutomaton {
+    const SWITCH_TO_LCT: usize = 3000;
+
     pub fn new() -> Self {
         let mut st = Vec::new();
         st.push(State::new()); // root
-        let mut lct = LinkCutTree::new();
-        lct.add_vertex(0);
         Self {
             st,
             last: 0,
-            lct,
+            lct: LinkCutTree::new(),
             items: Vec::new(),
             index_of_next: 0,
         }
@@ -246,10 +249,13 @@ impl SuffixAutomaton {
         self.st.push({
             let mut s = State::new();
             s.len = self.st[self.last].len + 1;
+            s.endp = pos;
             s
         });
 
-        self.lct.add_vertex(pos);
+        if self.items.len() > Self::SWITCH_TO_LCT {
+            self.lct.add_vertex(pos);
+        }
 
         let mut p = self.last as isize;
         while p != -1 && self.st[p as usize].next[c as usize] == -1 {
@@ -259,29 +265,39 @@ impl SuffixAutomaton {
 
         if p == -1 {
             self.st[cur].link = 0;
-            self.lct.link_parent(cur, 0);
+            if self.items.len() > Self::SWITCH_TO_LCT {
+                self.lct.link_parent(cur, 0);
+            }
             self.index_of_next = 0; // 0 when not found
         } else {
             let q = self.st[p as usize].next[c as usize];
             let qu = q as usize;
 
             // save the position AFTER the earlier occurrence
-            self.index_of_next = self.lct.get_value(qu);
+            self.index_of_next = if self.items.len() > Self::SWITCH_TO_LCT {
+                self.lct.get_value(qu)
+            } else {
+                self.st[qu].endp
+            };
 
             if self.st[p as usize].len + 1 == self.st[qu].len {
                 self.st[cur].link = q;
-                self.lct.link_parent(cur, qu);
+                if self.items.len() > Self::SWITCH_TO_LCT {
+                    self.lct.link_parent(cur, qu);
+                }
             } else {
                 let clone = self.st.len();
                 self.st.push(self.st[qu].clone());
                 self.st[clone].len = self.st[p as usize].len + 1;
 
-                self.lct.add_vertex(self.index_of_next);
-                self.lct.cut_parent(clone);
-                self.lct.link_parent(clone, self.st[qu].link as usize);
-                self.lct.cut_parent(qu);
-                self.lct.link_parent(qu, clone);
-                self.lct.link_parent(cur, clone);
+                if self.items.len() > Self::SWITCH_TO_LCT {
+                    self.lct.add_vertex(self.index_of_next);
+                    self.lct.cut_parent(clone);
+                    self.lct.link_parent(clone, self.st[qu].link as usize);
+                    self.lct.cut_parent(qu);
+                    self.lct.link_parent(qu, clone);
+                    self.lct.link_parent(cur, clone);
+                }
 
                 while p != -1 && self.st[p as usize].next[c as usize] == q {
                     self.st[p as usize].next[c as usize] = clone as isize;
@@ -295,8 +311,23 @@ impl SuffixAutomaton {
 
         self.last = cur;
 
+        if self.items.len() == Self::SWITCH_TO_LCT {
+            self.st.iter().for_each(|s| self.lct.add_vertex(s.endp));
+            for i in 1..self.st.len() {
+                self.lct.link_parent(i, self.st[i].link as usize);
+            }
+        }
+
         // Propagate the new position upward along suffix links
-        self.lct.assign_ancestors(self.st[cur].link as usize, pos);
+        if self.items.len() >= Self::SWITCH_TO_LCT {
+            self.lct.assign_ancestors(self.st[cur].link as usize, pos)
+        } else {
+            p = self.st[cur].link;
+            while p != -1 {
+                self.st[p as usize].endp = pos;
+                p = self.st[p as usize].link;
+            }
+        }
     }
 
     pub fn predict(&self) -> Move {
