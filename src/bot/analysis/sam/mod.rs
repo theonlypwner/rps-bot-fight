@@ -226,7 +226,7 @@ pub struct SuffixAutomaton {
 }
 
 impl SuffixAutomaton {
-    const SWITCH_TO_LCT: usize = 3000;
+    const SWITCH_TO_LCT: usize = 3 << 10;
 
     pub fn new() -> Self {
         let mut st = Vec::new();
@@ -311,21 +311,21 @@ impl SuffixAutomaton {
 
         self.last = cur;
 
-        if self.items.len() == Self::SWITCH_TO_LCT {
-            self.st.iter().for_each(|s| self.lct.add_vertex(s.endp));
-            for i in 1..self.st.len() {
-                self.lct.link_parent(i, self.st[i].link as usize);
-            }
-        }
-
         // Propagate the new position upward along suffix links
-        if self.items.len() >= Self::SWITCH_TO_LCT {
+        if self.items.len() > Self::SWITCH_TO_LCT {
             self.lct.assign_ancestors(self.st[cur].link as usize, pos)
         } else {
             p = self.st[cur].link;
             while p != -1 {
                 self.st[p as usize].endp = pos;
                 p = self.st[p as usize].link;
+            }
+
+            if self.items.len() == Self::SWITCH_TO_LCT {
+                self.st.iter().for_each(|s| self.lct.add_vertex(s.endp));
+                for i in 1..self.st.len() {
+                    self.lct.link_parent(i, self.st[i].link as usize);
+                }
             }
         }
     }
