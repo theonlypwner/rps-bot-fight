@@ -219,22 +219,20 @@ pub struct SuffixAutomaton {
     st: Vec<State>,
     last: usize,
 
-    lct: LinkCutTree<usize>,
+    lct: Option<LinkCutTree<usize>>,
 
     items: Vec<Move>,
     index_of_next: usize,
 }
 
 impl SuffixAutomaton {
-    const SWITCH_TO_LCT: usize = 3 << 10;
-
     pub fn new() -> Self {
         let mut st = Vec::new();
         st.push(State::new()); // root
         Self {
             st,
             last: 0,
-            lct: LinkCutTree::new(),
+            lct: None,
             items: Vec::new(),
             index_of_next: 0,
         }
@@ -253,9 +251,7 @@ impl SuffixAutomaton {
             s
         });
 
-        if self.items.len() > Self::SWITCH_TO_LCT {
-            self.lct.add_vertex(pos);
-        }
+        self.lct.as_mut().map(|l| l.add_vertex(pos));
 
         let mut p = self.last as isize;
         while p != -1 && self.st[p as usize].next[c as usize] == -1 {
@@ -265,38 +261,33 @@ impl SuffixAutomaton {
 
         if p == -1 {
             self.st[cur].link = 0;
-            if self.items.len() > Self::SWITCH_TO_LCT {
-                self.lct.link_parent(cur, 0);
-            }
+            self.lct.as_mut().map(|l| l.link_parent(cur, 0));
             self.index_of_next = 0; // 0 when not found
         } else {
             let q = self.st[p as usize].next[c as usize];
             let qu = q as usize;
 
             // save the position AFTER the earlier occurrence
-            self.index_of_next = if self.items.len() > Self::SWITCH_TO_LCT {
-                self.lct.get_value(qu)
-            } else {
-                self.st[qu].endp
-            };
+            self.index_of_next = self
+                .lct
+                .as_mut()
+                .map_or(self.st[qu].endp, |l| l.get_value(qu));
 
             if self.st[p as usize].len + 1 == self.st[qu].len {
                 self.st[cur].link = q;
-                if self.items.len() > Self::SWITCH_TO_LCT {
-                    self.lct.link_parent(cur, qu);
-                }
+                self.lct.as_mut().map(|l| l.link_parent(cur, qu));
             } else {
                 let clone = self.st.len();
                 self.st.push(self.st[qu].clone());
                 self.st[clone].len = self.st[p as usize].len + 1;
 
-                if self.items.len() > Self::SWITCH_TO_LCT {
-                    self.lct.add_vertex(self.index_of_next);
-                    self.lct.cut_parent(clone);
-                    self.lct.link_parent(clone, self.st[qu].link as usize);
-                    self.lct.cut_parent(qu);
-                    self.lct.link_parent(qu, clone);
-                    self.lct.link_parent(cur, clone);
+                if let Some(lct) = self.lct.as_mut() {
+                    lct.add_vertex(self.index_of_next);
+                    lct.cut_parent(clone);
+                    lct.link_parent(clone, self.st[qu].link as usize);
+                    lct.cut_parent(qu);
+                    lct.link_parent(qu, clone);
+                    lct.link_parent(cur, clone);
                 }
 
                 while p != -1 && self.st[p as usize].next[c as usize] == q {
@@ -312,20 +303,28 @@ impl SuffixAutomaton {
         self.last = cur;
 
         // Propagate the new position upward along suffix links
-        if self.items.len() > Self::SWITCH_TO_LCT {
-            self.lct.assign_ancestors(self.st[cur].link as usize, pos)
+        if let Some(lct) = self.lct.as_mut() {
+            lct.assign_ancestors(self.st[cur].link as usize, pos)
         } else {
             p = self.st[cur].link;
+            let mut i: usize = 0;
             while p != -1 {
                 self.st[p as usize].endp = pos;
                 p = self.st[p as usize].link;
+                i += 1;
             }
 
-            if self.items.len() == Self::SWITCH_TO_LCT {
-                self.st.iter().for_each(|s| self.lct.add_vertex(s.endp));
-                for i in 1..self.st.len() {
-                    self.lct.link_parent(i, self.st[i].link as usize);
-                }
+            // switch to LCT when i >= 8 * (floor(log2(N)) + 1)
+            let s = i >> 3;
+            if s >= usize::BITS as usize || self.items.len() >> s == 0 {
+                self.lct = Some({
+                    let mut lct = LinkCutTree::new();
+                    self.st.iter().for_each(|s| lct.add_vertex(s.endp));
+                    for i in 1..self.st.len() {
+                        lct.link_parent(i, self.st[i].link as usize);
+                    }
+                    lct
+                })
             }
         }
     }
